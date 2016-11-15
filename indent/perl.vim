@@ -19,21 +19,6 @@
 " (The following probably needs modifying the perl syntax file)
 " - qw() lists
 " - Heredocs with terminators that don't match \I\i*
-"
-" If multiple opening braces are on the same line, then
-" normal behavior is to indent over one shift width per 
-" opening brace.  
-"
-" If you want to collapse the indents for cuddled braces then:
-" let g:perl_cuddle_indent = 1
-" Eg:
-" $foo = [{
-"     key => $val
-" }]
-" Without perl_cuddle_indent you get:
-" $foo = [{
-"         key => $val
-"     }]
 
 " Only load this indent file when no other was loaded.
 if exists("b:did_indent")
@@ -136,6 +121,7 @@ function! GetPerlIndent()
         " bracket as the first character in the class.
         let braceclass = '[][(){}]'
         let bracepos = match(line, braceclass, matchend(line, '^\s*[])}]'))
+        let brace_level = 0
         while bracepos != -1
             let synid = synIDattr(synID(lnum, bracepos + 1, 0), "name")
             " If the brace is highlighted in one of those groups, indent it.
@@ -149,18 +135,17 @@ function! GetPerlIndent()
                         \ || synid =~ '^perl\(Sub\|Block\|Package\)Fold'
                 let brace = strpart(line, bracepos, 1)
                 if brace == '(' || brace == '{' || brace == '['
-                    let ind = ind + &sw
+                    let brace_level = brace_level + 1
                 else
-                    let ind = ind - &sw
+                    let brace_level = brace_level - 1
                 endif
             endif
 
-            if exists('g:perl_cuddle_indent') && g:perl_cuddle_indent
-                let bracepos = -1
-            else
-                let bracepos = match(line, braceclass, bracepos + 1)
-            endif
+            let bracepos = match(line, braceclass, bracepos + 1)
         endwhile
+        if brace_level > 0
+            let ind = ind + &sw
+        endif
         let bracepos = matchend(cline, '^\s*[])}]')
         if bracepos != -1
             let synid = synIDattr(synID(v:lnum, bracepos, 0), "name")
